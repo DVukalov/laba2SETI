@@ -3,8 +3,9 @@
 
 #include <QObject>
 
-#include <windows.h>
-#include <icmpapi.h> // ???
+#include "winsock2.h"
+#include "iphlpapi.h"
+#include "icmpapi.h"
 
 class ICMPGenerator : public QObject
 {
@@ -13,6 +14,9 @@ class ICMPGenerator : public QObject
 public:
     ICMPGenerator(QObject* parent = 0);
     ~ICMPGenerator();
+
+public slots:
+    void sendPacket();
 };
 
 #endif // ICMPGENERATOR

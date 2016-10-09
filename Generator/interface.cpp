@@ -6,6 +6,8 @@ Interface::Interface(QWidget *parent) :
     ui(new Ui::Interface)
 {
     ui->setupUi(this);
+    mGenerator = new ICMPGenerator(this);
+    mGenerator->sendPacket();
 }
 
 Interface::~Interface()

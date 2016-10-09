@@ -3,6 +3,8 @@
 
 #include <QWidget>
 
+#include "icmpgenerator.h"
+
 namespace Ui {
 class Interface;
 }
@@ -17,6 +19,7 @@ public:
 
 private:
     Ui::Interface *ui;
+    ICMPGenerator* mGenerator;
 };
 
 #endif // INTERFACE_H
