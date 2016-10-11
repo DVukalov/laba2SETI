@@ -26,6 +26,10 @@ private slots:
     bool bindSocket();
     bool promiscuousModeON();
     bool startSniffer();
+    void parseIP();
+    void parseIСMP();
+    void parseTCP();
+    void parseUDP();
 
 private:
     char name[128];

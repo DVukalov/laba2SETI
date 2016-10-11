@@ -2,7 +2,8 @@
 
 namespace
 {
-    const uint max_buf_len = 0x1000000;
+    const uint max_buf_len = 64 * 1024;
+
     struct ip_header
     {
         unsigned char	ver_ihl;	// Длина заголовка (4 бита)
@@ -20,6 +21,41 @@ namespace
         unsigned int	dst_addr;	// IP-адрес получателя
     };
 
+    struct icmp_header
+    {
+    unsigned char   type;			// тип ICMP- пакета
+    unsigned char   code;			// код ICMP- пакета
+    unsigned short  crc ;			// контрольная сумма
+    union {
+        struct { unsigned char	uc1, uc2, uc3, uc4; } s_uc;
+        struct { unsigned short	us1, us2; } s_us;
+        unsigned long s_ul;
+        } s_icmp;				// зависит от типа
+    };
+
+    struct tcp_header
+    {
+    unsigned short	src_port;	// Порт отправителя
+    unsigned short	dst_port;	// Порт получателя
+    unsigned int	seq_n;		// Номер очереди
+    unsigned int	ack_n;		// Номер подтверждения
+    unsigned char	offset;		// Смещение данных (4 бита)
+                        // + Зарезервировано (4 бита)
+    unsigned char	flags;		// Зарезервировано (2 бита)
+                        // + Флаги (6 бит)
+    unsigned short	win;		// Размер окна
+    unsigned short	crc;		// Контрольная сумма заголовка
+    unsigned short	padding;	// Дополнение до 20 байт
+    };
+
+
+    struct udp_header
+    {
+    unsigned short   src_port ;	// номер порта отправителя
+    unsigned short   dst_port ;	// номер порта получателя
+    unsigned short   length;	// длина датаграммы
+    unsigned short   crc;		// контрольная сумма заголовка
+    };
 }
 
 Sniffer::Sniffer(QObject* parent)
@@ -27,8 +63,7 @@ Sniffer::Sniffer(QObject* parent)
 {
     adrPC = new SOCKADDR_IN;
     informHost = new HOSTENT;
-    buffer = new char(max_buf_len);
-
+    buffer = new char[max_buf_len];
 }
 
 Sniffer::~Sniffer()
@@ -36,7 +71,6 @@ Sniffer::~Sniffer()
     delete buffer;
     delete adrPC;
     delete informHost;
-
 }
 
 bool Sniffer::initialization()
@@ -120,9 +154,51 @@ bool Sniffer::startSniffer()
             uint count = recv(sock, buffer, max_buf_len,0);
             if (count >= sizeof(ip_header))
             {
+                if (count == sizeof(ip_header))
+                {
+                    //парсер сообщение
+                }
 
+                if (count == sizeof(icmp_header))
+                {
+                    //парсер сообщение
+                }
+
+                if ( count == sizeof(tcp_header))
+                {
+                    //парсер сообщение
+                }
+
+                if ( count == sizeof(udp_header))
+                {
+                    //парсер сообщение
+                }
             }
         }
 
     }
+}
+
+void Sniffer::parseIP()
+{
+
+
+}
+
+void Sniffer::parseICMP()
+{
+
+
+}
+
+void Sniffer::parseTCP()
+{
+
+
+}
+
+void Sniffer::parseUDP()
+{
+
+
 }
