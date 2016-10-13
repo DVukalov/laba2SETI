@@ -1,5 +1,6 @@
 #include "sniffer.h"
 
+
 namespace
 {
     const uint max_buf_len = 64 * 1024;
@@ -56,6 +57,9 @@ namespace
     unsigned short   length;	// длина датаграммы
     unsigned short   crc;		// контрольная сумма заголовка
     };
+
+
+
 }
 
 Sniffer::Sniffer(QObject* parent)
@@ -64,9 +68,12 @@ Sniffer::Sniffer(QObject* parent)
     adrPC = new sockaddr_in;
     informHost = new HOSTENT;
     buffer = new char[max_buf_len];
-    __print;
+    file.setFileName("log.txt");
+    file.open(QIODevice::WriteOnly);
+    out.setDevice(&file);
     startSniffer();
     __print;
+
 }
 
 Sniffer::~Sniffer()
@@ -74,6 +81,7 @@ Sniffer::~Sniffer()
     delete buffer;
     delete adrPC;
     delete informHost;
+    file.close();
 }
 
 bool Sniffer::initialization()
@@ -118,7 +126,7 @@ bool Sniffer::determIP_PC()
     adrPC->sin_family = AF_INET;
     adrPC->sin_addr.S_un.S_addr = ((struct in_addr *)
                                    informHost->h_addr_list[0])->S_un.S_addr;
-    adrPC->sin_port = htons(27015);
+//    adrPC->sin_port = htons(27015);
     return true;
 }
 
@@ -165,26 +173,27 @@ bool Sniffer::startSniffer()
             uint count = recv(sock, buffer, max_buf_len,0);
             if (count >= sizeof(ip_header))
             {
-                __print << buffer;
-                if (count == sizeof(ip_header))
+                ip_header *ip = (ip_header *)buffer;
+                __print << ip->ver_ihl;
+                if (count >=sizeof(ip_header))
                 {
-                    //парсер сообщение
+                    if (ip->proto == IPPROTO_TCP)
+                    {
+                        __print << "TCP";
+                    }
+                    if (ip->proto == IPPROTO_UDP)
+                    {
+                        __print << "UDP";
+                        parseUDP();
+                    }
+                    if (ip->proto == IPPROTO_ICMP)
+                    {
+                        __print << "ICMP";
+                    }
                 }
 
-                if (count == sizeof(icmp_header))
-                {
-                    //парсер сообщение
-                }
 
-                if ( count == sizeof(tcp_header))
-                {
-                    //парсер сообщение
-                }
 
-                if ( count == sizeof(udp_header))
-                {
-                    //парсер сообщение
-                }
             }
         }
 
@@ -192,26 +201,31 @@ bool Sniffer::startSniffer()
     return true;
 }
 
-//void Sniffer::parseIP()
-//{
+void Sniffer::parseIP()
+{
+    uint iplen;
+    ip_header *ip = (ip_header *)buffer;
 
 
-//}
+}
 
-//void Sniffer::parseICMP()
-//{
+void Sniffer::parseICMP()
+{
+    parseIP();
+    icmp_header * icmp = (icmp_header *)buffer;
 
+}
 
-//}
+void Sniffer::parseTCP()
+{
+    parseIP();
+    tcp_header * tcp = (tcp_header *)buffer;
 
-//void Sniffer::parseTCP()
-//{
+}
 
+void Sniffer::parseUDP()
+{
+    parseIP();
+    udp_header *udp = (udp_header *)buffer;
 
-//}
-
-//void Sniffer::parseUDP()
-//{
-
-
-//}
+}

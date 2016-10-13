@@ -5,13 +5,16 @@
 
 #include <QObject>
 #include "conio.h"
-
+#include <QDebug>
 #include "winsock2.h"
 #include "iphlpapi.h"
 #include "icmpapi.h"
 #include "mstcpip.h"
-
-
+#include <QFile>
+#include <QTextStream>
+#include <QIODevice>
+#include <QString>
+#include <QByteArray>
 class Sniffer : public QObject
 {
     Q_OBJECT
@@ -27,7 +30,7 @@ private slots:
     bool promiscuousModeON();
     bool startSniffer();
     void parseIP();
-    void parseIСMP();
+    void parseICMP();
     void parseTCP();
     void parseUDP();
 
@@ -37,7 +40,8 @@ private:
     SOCKADDR_IN * adrPC;
     HOSTENT * informHost;
     char * buffer;
-
+    QFile file;
+    QTextStream out;
 };
 
 #endif // SNIFFER
