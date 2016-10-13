@@ -70,6 +70,7 @@ Sniffer::Sniffer(QObject* parent)
     buffer = new char[max_buf_len];
     file.setFileName("log.txt");
     file.open(QIODevice::WriteOnly);
+    file.flush();
     out.setDevice(&file);
     startSniffer();
     __print;
@@ -174,12 +175,12 @@ bool Sniffer::startSniffer()
             if (count >= sizeof(ip_header))
             {
                 ip_header *ip = (ip_header *)buffer;
-                __print << ip->ver_ihl;
                 if (count >=sizeof(ip_header))
                 {
                     if (ip->proto == IPPROTO_TCP)
                     {
                         __print << "TCP";
+                        parseTCP();
                     }
                     if (ip->proto == IPPROTO_UDP)
                     {
@@ -205,7 +206,36 @@ void Sniffer::parseIP()
 {
     uint iplen;
     ip_header *ip = (ip_header *)buffer;
+    struct sockaddr_in source, dest;
 
+    memset(&source, 0, sizeof(source));
+    source.sin_addr.s_addr = ip->src_addr;
+
+    memset(&dest, 0, sizeof(dest));
+    dest.sin_addr.s_addr = ip->dst_addr;
+    QByteArray data;
+    data = "\n          IP Header \n |-IP Version          : " + QByteArray::number(0xF & ip->ver_ihl)
+            + "\n |-Type Of Service     : " + QByteArray::number(ip->tos)
+            + "\n |-IP Header Length    : " + QByteArray::number(0xF0 & ip->ver_ihl)
+            + "\n |-IP Total Length     : " + QByteArray::number(ip->tlen)
+            + "\n |-Identification      : " + QByteArray::number(ip->id)
+            + "\n |-TTL                 : " + QByteArray::number(ip->ttl)
+            + "\n |-Protocol            : " + QByteArray::number(ip->proto)
+            + "\n |-Checksum            : " + QByteArray::number(ip->crc, 16)
+            + "\n |-Source IP           : " + inet_ntoa(source.sin_addr)
+            + "\n |-Destination IP      : " + inet_ntoa(dest.sin_addr);
+
+    file.write(data.data());
+
+    delete ip;
+    ip = nullptr;
+}
+
+void Sniffer::printMSG()
+{
+//    ip_header * ip = (struct ip_header * )buffer;
+//    iplen = (0xF0 & ip->ver_ihl) * 4;
+//    udp_header *udp = (udp_header *)(buffer + iplen);
 
 }
 
@@ -214,18 +244,54 @@ void Sniffer::parseICMP()
     parseIP();
     icmp_header * icmp = (icmp_header *)buffer;
 
+
+
+
+
+
 }
 
 void Sniffer::parseTCP()
 {
     parseIP();
-    tcp_header * tcp = (tcp_header *)buffer;
-
+    unsigned short iplen;
+    ip_header * ip = (struct ip_header * )buffer;
+    iplen = (0xF0 & ip->ver_ihl) * 4;
+    tcp_header * tcp = (tcp_header *)(buffer + iplen);
+    QByteArray data;
+    data = "\n\n          TCP Header \n    |-Source Port        : " + QByteArray::number(tcp->src_port)
+            + "\n    |-Destination Port    : " + QByteArray::number(tcp->dst_port)
+            + "\n    |-Sequence Number     : " + QByteArray::number(tcp->seq_n)
+            + "\n    |-Acknowledge Number  : " + QByteArray::number(tcp->ack_n)
+            + "\n    |-Window              : " + QByteArray::number(tcp->win)
+            + "\n    |-Checksum            : " + QByteArray::number(tcp->crc,16)
+            + "\n";
+    file.write(data.data());
+    delete ip;
+    ip = nullptr;
+    delete tcp;
+    tcp = nullptr;
 }
 
 void Sniffer::parseUDP()
 {
     parseIP();
-    udp_header *udp = (udp_header *)buffer;
-
+    unsigned short iplen;
+    ip_header * ip = (struct ip_header * )buffer;
+    iplen = (0xF0 & ip->ver_ihl) * 4;
+    udp_header *udp = (udp_header *)(buffer + iplen);
+    QByteArray data;
+    data = "\n\n          UDP Header \n    |-Source Port         : " + QByteArray::number(udp->src_port)
+            + "\n    |-Destination Port    : " + QByteArray::number(udp->dst_port)
+            + "\n    |-UDP Length          : " + QByteArray::number(udp->length)
+            + "\n    |-UDP Checksum        : " + QByteArray::number(udp->crc, 16)
+            + "\n";
+    file.write(data.data());
+//    delete ip;
+//    __print;
+//    ip =nullptr;
+//    __print;
+//    delete udp;
+//    __print;
+//    udp = nullptr;
 }

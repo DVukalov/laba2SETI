@@ -30,9 +30,11 @@ private slots:
     bool promiscuousModeON();
     bool startSniffer();
     void parseIP();
+    void printMSG();
     void parseICMP();
     void parseTCP();
     void parseUDP();
+
 
 private:
     char name[128];
