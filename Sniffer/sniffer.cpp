@@ -61,9 +61,12 @@ namespace
 Sniffer::Sniffer(QObject* parent)
     : QObject(parent)
 {
-    adrPC = new SOCKADDR_IN;
+    adrPC = new sockaddr_in;
     informHost = new HOSTENT;
     buffer = new char[max_buf_len];
+    __print;
+    startSniffer();
+    __print;
 }
 
 Sniffer::~Sniffer()
@@ -75,10 +78,11 @@ Sniffer::~Sniffer()
 
 bool Sniffer::initialization()
 {
+    __print;
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2,2), &wsaData))
     {
-//        __print <<"WSA_INIT";
+        __print <<"WSA_INIT";
         return false;
     }
     return true;
@@ -86,10 +90,11 @@ bool Sniffer::initialization()
 
 bool Sniffer::createSocket()
 {
+    __print;
    sock = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
     if (INVALID_SOCKET == sock)
     {
-//        __print<<"SOCKET";
+        __print<<"SOCKET";
         WSACleanup();
         return false;
     }
@@ -98,40 +103,45 @@ bool Sniffer::createSocket()
 
 bool Sniffer::determIP_PC()
 {
+    __print;
     if(gethostname(name, sizeof(name)))
     {
-//        __print<<"GETHOSTNAME";
+        __print<<"GETHOSTNAME";
         closesocket(sock);
         WSACleanup();
         return false;
     }
 
     informHost = gethostbyname(name);
-    ZeroMemory(&adrPC, sizeof(adrPC));
+//    ZeroMemory(&adrPC, sizeof(adrPC));
+//    adrPC = new sockaddr_in;
     adrPC->sin_family = AF_INET;
     adrPC->sin_addr.S_un.S_addr = ((struct in_addr *)
                                    informHost->h_addr_list[0])->S_un.S_addr;
+    adrPC->sin_port = htons(27015);
     return true;
 }
 
 bool Sniffer::bindSocket()
 {
-    if (bind (sock, (SOCKADDR *)&adrPC, sizeof(SOCKADDR)))
+    __print;
+    if (bind (sock, (SOCKADDR *)adrPC, sizeof(SOCKADDR)))
     {
-//        __print<<"BIND";
-          closesocket(sock);
-          WSACleanup();
-          return false;
+        __print<<"BIND";
+        closesocket(sock);
+        WSACleanup();
+        return false;
     }
     return true;
 }
 
 bool Sniffer::promiscuousModeON()
 {
+    __print;
     unsigned long flag = 1;
     if (ioctlsocket(sock, SIO_RCVALL, &flag))
     {
-//        __print<<"ioctlsocket";
+        __print<<"ioctlsocket";
         closesocket(sock);
         WSACleanup();
         return false;
@@ -141,9 +151,10 @@ bool Sniffer::promiscuousModeON()
 }
 bool Sniffer::startSniffer()
 {
+    __print;
 
-    if (!(initialization() && createSocket()
-            && determIP_PC() && bindSocket() && promiscuousModeON()))
+    if (!(initialization() && createSocket() && determIP_PC()
+          && bindSocket() && promiscuousModeON()))
         return false;
     else
     {
@@ -154,6 +165,7 @@ bool Sniffer::startSniffer()
             uint count = recv(sock, buffer, max_buf_len,0);
             if (count >= sizeof(ip_header))
             {
+                __print << buffer;
                 if (count == sizeof(ip_header))
                 {
                     //парсер сообщение
@@ -177,28 +189,29 @@ bool Sniffer::startSniffer()
         }
 
     }
+    return true;
 }
 
-void Sniffer::parseIP()
-{
+//void Sniffer::parseIP()
+//{
 
 
-}
+//}
 
-void Sniffer::parseICMP()
-{
-
-
-}
-
-void Sniffer::parseTCP()
-{
+//void Sniffer::parseICMP()
+//{
 
 
-}
+//}
 
-void Sniffer::parseUDP()
-{
+//void Sniffer::parseTCP()
+//{
 
 
-}
+//}
+
+//void Sniffer::parseUDP()
+//{
+
+
+//}
