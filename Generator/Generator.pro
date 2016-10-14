@@ -25,3 +25,5 @@ HEADERS  += interface.h \
     icmpgenerator.h
 
 FORMS    += interface.ui
+
+QMAKE_CXXFLAGS += -std=c++11

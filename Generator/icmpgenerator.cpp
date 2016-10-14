@@ -2,69 +2,46 @@
 
 namespace
 {
-
 const uint max_buf_len = 64 * 1024;
-
-struct ip_header
-{
-uchar ver_ihl;      // Длина заголовка (4 бита)
-                    // (измеряется в словах по 32 бита) +
-                    // + Номер версии протокола (4 бита)
-uchar tos;          // Тип сервиса
-ushort tlen;        // Общая длина пакета
-ushort id;          // Идентификатор пакета
-ushort flags_fo;    // Управляющие флаги (3 бита)
-                    // + Смещение фрагмента (13 бит)
-uchar ttl;          // Время жизни пакета
-uchar proto;        // Протокол верхнего уровня
-ushort crc;         // CRC заголовка
-uint src_addr;      // IP-адрес отправителя
-uint dst_addr;      // IP-адрес получателя
-};
-
-struct icmp_header
-{
-    const uchar type = 0;	// тип ICMP- пакета
-    const uchar code = 0;	// код ICMP- пакета
-    ushort crc;             // контрольная сумма
-    union
-    {
-        struct
-        {
-            uchar uc1;
-            uchar uc2;
-            uchar uc3;
-            uchar uc4;
-        } s_uc;
-        struct
-        {
-            ushort us1;
-            ushort us2;
-        } s_us;
-
-        ulong s_ul;
-
-    } s_icmp;				// зависит от типа
-};
-
-// Версия IP пакета
-#define RS_IP_VERSION		0x40
-
+ushort packetID = 0;
 }
 
 ICMPGenerator::ICMPGenerator(QObject* parent)
     : QObject(parent)
 {
+    // Заполнение полей заголовка IP
+    mIPH.ver_ihl = 0x40;
+    mIPH.tos = 0xFC; // все требования без ECN
+    mIPH.id = packetID++;
+    mIPH.flags_fo = 0x0;
+    mIPH.ttl = 0x40; // 64 (default)
+    mIPH.proto = 0x1; // ICMP
+    mIPH.src_addr = 0xC0A80001; // 192.168.0.1
+    mIPH.dst_addr = 0xC0A80002; // 192.168.0.2
+
+    // Заполнение полей заголовка ICMP
+    mICMPH.type = 0x8; // ICMP_ECHO
+    mICMPH.code = 0x0;
+    // Идентификатор
+    mICMPH.s_icmp.s_uc.uc1 = 0xC1;
+    mICMPH.s_icmp.s_uc.uc2 = 0xC2;
+    mICMPH.s_icmp.s_uc.uc3 = 0xC3;
+    mICMPH.s_icmp.s_uc.uc4 = 0xC4;
+    // Номер последовательности
+    mICMPH.s_icmp.s_us.us1 = 0xA1;
+    mICMPH.s_icmp.s_us.us1 = 0xA2;
+    // Данные
+    mICMPH.s_icmp.s_ul = 0xE0A55;
+
     __print << init(2, 2);
     socket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_RAW, NULL, 0,
                        WSA_FLAG_OVERLAPPED);
-
 }
 
 ICMPGenerator::~ICMPGenerator()
 {
     __print;
-    close(socket);
+    closesocket(socket);
     WSACleanup();
 }
 
@@ -79,8 +56,8 @@ int ICMPGenerator::init (int v_major, int v_minor)
     // Проверка версии WinSock
     if(LOBYTE(wsadata.wVersion) != v_minor ||
         HIBYTE(wsadata.wVersion) != v_major)
-    {
-        rs_exit();
+    {        
+        WSACleanup();
         return WSAGetLastError();
     }
     return 0;
@@ -103,105 +80,65 @@ ushort ICMPGenerator::getCRC (ushort* buffer, int length)
     return (ushort)(~crc);
 }
 
-int ICMPGenerator::sendIP(SOCKET s, struct ip_header iph,
-            uchar* data, int data_length,
-            ushort dst_port_raw)
+int ICMPGenerator::sendDatagram(QByteArray message)
 {
     int result;
     char* buffer;
-    sockaddr_in target;
-    unsigned char header_length;
-    unsigned int packet_length;
-    memset (&target, 0, sizeof (target));
-    target.sin_family = AF_INET;
-    target.sin_addr.s_addr = iph.dst_addr;
-    target.sin_port = dst_port_raw;
-
+    uint DATAlen = message.size();
+    uint IPlen = sizeof(struct ip_header);
+    uint ICMPlen = sizeof(struct icmp_header);
     // Вычисление длины и заголовка пакета
-    header_length = sizeof (struct ip_header);
-    packet_length = header_length + data_length;
+    uint PACKlen = IPlen + ICMPlen + DATAlen;
+    sockaddr_in target;
+
+    memset(&target, 0, sizeof (target));
+    target.sin_family = AF_INET;
+    target.sin_addr.s_addr = mIPH.dst_addr;
+    target.sin_port = 0;
+    mIPH.tlen = PACKlen;
+    buffer = new char[ICMPlen + DATAlen];
+
+    // Копирование заголовка пакета в буфер ( CRC равно 0).
+    memcpy(buffer, &mICMPH, ICMPlen);
+
+    // Копирование данных в буфер
+    memcpy (buffer + ICMPlen, message.data(), DATAlen);
+
+    // Вычисление CRC.
+    mICMPH.crc = getCRC((ushort *)buffer, ICMPlen + DATAlen);
+
+    // Копирование заголовка пакета в буфер (CRC посчитана).
+    memcpy(buffer, &mICMPH, ICMPlen);
 
     // Установка CRC.
-    iph.crc = 0;
-
-    // Заполнение некоторых полей заголовка IP
-    iph.ver_ihl = RS_IP_VERSION;
+    mIPH.crc = 0;
 
     // Если длина пакета не задана, то длина пакета
     // приравнивается к длине заголовка
-    if (!(iph.ver_ihl & 0x0F))
-        iph.ver_ihl |= 0x0F & (header_length / 4);
-    buffer =(char *)calloc(packet_length, sizeof (char));
+    if (!(mIPH.ver_ihl & 0x0F))
+        mIPH.ver_ihl |= 0x0F & (IPlen / 4);
+
+    delete buffer;
+    buffer = new char[PACKlen];
 
     // Копирование заголовка пакета в буфер ( CRC равно 0).
-    memcpy(buffer, &iph, sizeof (struct ip_header));
+    memcpy(buffer, &mIPH, IPlen);
 
     // Копирование данных в буфер
-    if (data)
-        memcpy (buffer + header_length, data, data_length);
+    memcpy (buffer + IPlen, message.data(), ICMPlen + DATAlen);
 
     // Вычисление CRC.
-    iph.crc = getCRC((unsigned short *) buffer, packet_length);
+    mIPH.crc = getCRC((ushort *)buffer, PACKlen);
 
     // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy (buffer, &iph, sizeof (struct ip_header));
+    memcpy (buffer, &mIPH, IPlen);
+
+    // Копирование заголовка пакета в буфер (CRC посчитана).
+    memcpy (buffer, &mIPH, sizeof (struct ip_header));
 
     // Отправка IP пакета в сеть.
-    result = sendto ( s, buffer, packet_length, 0,
-                (struct sockaddr *)&target,
-                sizeof (target));
-    free (buffer);
-    return result;
-}
+    result = sendto (socket, buffer, PACKlen, 0,
+                (struct sockaddr *)&target, sizeof(target));
 
-int ICMPGenerator::sendICMP(SOCKET s, struct ip_header iph,
-              struct icmp_header icmph,
-              uchar* data, int data_length)
-{
-    char* buffer;
-    int result;
-    uchar header_length;
-    uint packet_length;
-
-    // Вычисление длин пакета и заголовка.
-    header_length = sizeof (struct icmp_header);
-    packet_length = header_length + data_length;
-    icmph.crc = 0;
-    buffer = new char[packet_length];
-
-    // Копирование заголовка пакета в буфер ( CRC равно 0).
-    memcpy(buffer, &icmph, sizeof(struct icmp_header));
-
-    // Копирование данных в буфер
-    if (data)
-        memcpy (buffer + header_length, data, data_length);
-
-    // Вычисление CRC.
-    icmph.crc = getCRC ((unsigned short *) buffer,
-                  packet_length);
-
-    // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy (buffer, &icmph, sizeof (struct icmp_header));
-
-    // Отправка IP пакета с вложенным ICMP пакетом.
-    result = sendIP (s, iph, buffer, packet_length, 0);
-
-    delete buffer;
-    buffer = nullptr;
-    return result;
-}
-
-int ICMPGenerator::sendDatagram(QByteArray data)
-{
-    int result;
-    ip_header IPH;
-    icmp_header ICMPH;
-    // TODO забить хэдэры
-
-    // Отправка ICMP пакета с вложенным пакетом данных.
-    result = sendICMP(socket, IPH, ICMPH, data.data(), data.length());
-
-    delete buffer;
-    buffer = nullptr;
     return result;
 }

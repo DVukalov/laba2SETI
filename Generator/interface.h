@@ -2,6 +2,10 @@
 #define INTERFACE_H
 
 #include <QWidget>
+#include <QLayout>
+#include <QTextEdit>
+#include <QByteArray>
+#include <QPushButton>
 
 #include "icmpgenerator.h"
 
@@ -17,8 +21,14 @@ public:
     explicit Interface(QWidget *parent = 0);
     ~Interface();
 
+public slots:
+    void send();
+
 private:
     Ui::Interface *ui;
+
+    QPushButton* mSendBut;
+    QTextEdit* mMessageEdit;
     ICMPGenerator* mGenerator;
 };
 
