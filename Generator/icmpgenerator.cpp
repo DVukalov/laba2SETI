@@ -1,119 +1,207 @@
-#include <QDebug>
 #include "icmpgenerator.h"
 
 namespace
 {
-    struct icmp_header
+
+const uint max_buf_len = 64 * 1024;
+
+struct ip_header
+{
+uchar ver_ihl;      // Длина заголовка (4 бита)
+                    // (измеряется в словах по 32 бита) +
+                    // + Номер версии протокола (4 бита)
+uchar tos;          // Тип сервиса
+ushort tlen;        // Общая длина пакета
+ushort id;          // Идентификатор пакета
+ushort flags_fo;    // Управляющие флаги (3 бита)
+                    // + Смещение фрагмента (13 бит)
+uchar ttl;          // Время жизни пакета
+uchar proto;        // Протокол верхнего уровня
+ushort crc;         // CRC заголовка
+uint src_addr;      // IP-адрес отправителя
+uint dst_addr;      // IP-адрес получателя
+};
+
+struct icmp_header
+{
+    const uchar type = 0;	// тип ICMP- пакета
+    const uchar code = 0;	// код ICMP- пакета
+    ushort crc;             // контрольная сумма
+    union
     {
-    uchar   type;			// тип ICMP- пакета
-    uchar   code;			// код ICMP- пакета
-    ushort  crc ;			// контрольная сумма
-    union {
-        struct { uchar	uc1, uc2, uc3, uc4; } s_uc;
-        struct { ushort	us1, us2; } s_us;
+        struct
+        {
+            uchar uc1;
+            uchar uc2;
+            uchar uc3;
+            uchar uc4;
+        } s_uc;
+        struct
+        {
+            ushort us1;
+            ushort us2;
+        } s_us;
+
         ulong s_ul;
-        } s_icmp;				// зависит от типа
-    };
-    //Определим вспомогательные макроопределения:
-    // тип ICMP пакета
-    #define ICMP_ECHO_REPLY			0
-    #define ICMP_UNREACHABLE		3
-    #define ICMP_QUENCH				4
-    #define ICMP_REDIRECT			5
-    #define ICMP_ECHO				8
-    #define ICMP_TIME				11
-    #define ICMP_PARAMETER			12
-    #define ICMP_TIMESTAMP			13
-    #define ICMP_TIMESTAMP_REPLY	14
-    #define ICMP_INFORMATION		15
-    #define ICMP_INFORMATION_REPLY	16
 
-    // ICMP коды для ICMP типа ICMP_UNREACHABLE
-    #define ICMP_UNREACHABLE_NET			0
-    #define ICMP_UNREACHABLE_HOST			1
-    #define ICMP_UNREACHABLE_PROTOCOL		2
-    #define ICMP_UNREACHABLE_PORT			3
-    #define ICMP_UNREACHABLE_FRAGMENTATION	4
-    #define ICMP_UNREACHABLE_SOURCE         5
-    #define ICMP_UNREACHABLE_SIZE			8
+    } s_icmp;				// зависит от типа
+};
 
-    // ICMP коды для ICMP типа ICMP_TIME
-    #define ICMP_TIME_TRANSIT			0
-    #define ICMP_TIME_FRAGMENT			1
+// Версия IP пакета
+#define RS_IP_VERSION		0x40
 
-    // ICMP коды для ICMP типа ICMP_REDIRECT
-    #define ICMP_REDIRECT_NETWORK			0
-    #define ICMP_REDIRECT_HOST              1
-    #define ICMP_REDIRECT_SERVICE_NETWORK	2
-    #define ICMP_REDIRECT_SERVICE_HOST		3
 }
 
 ICMPGenerator::ICMPGenerator(QObject* parent)
     : QObject(parent)
 {
-    __print;
+    __print << init(2, 2);
+    socket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_RAW, NULL, 0,
+                       WSA_FLAG_OVERLAPPED);
+
 }
 
 ICMPGenerator::~ICMPGenerator()
 {
     __print;
+    close(socket);
+    WSACleanup();
 }
 
-void ICMPGenerator::sendPacket()
+int ICMPGenerator::init (int v_major, int v_minor)
 {
-    __print;
-    // Объявляем переменные
-    HANDLE hIcmpFile;                       // Обработчик
-    unsigned long ipaddr = INADDR_NONE;     // Адрес назначения
-    DWORD dwRetVal = 0;                     // Количество ответов
-    char SendData[32] = "Data Buffer";      // Буффер отсылаемых данных
-    LPVOID ReplyBuffer = NULL;              // Буффер ответов
-    DWORD ReplySize = 0;                    // Размер буффера ответов
-
-    // Устанавливаем IP-адрес из поля lineEdit
-    ipaddr = inet_addr("192.168.1.65"/*ui->lineEdit->text().toStdString().c_str()*/);
-    hIcmpFile = IcmpCreateFile();   // Создаём обработчик
-
-    // Выделяем память под буффер ответов
-    ReplySize = sizeof(ICMP_ECHO_REPLY) + sizeof(SendData);
-    ReplyBuffer = (VOID*) malloc(ReplySize);
-
-    // Вызываем функцию ICMP эхо запроса
-    dwRetVal = IcmpSendEcho(hIcmpFile, ipaddr, SendData, sizeof(SendData),
-                NULL, ReplyBuffer, ReplySize, 1000);
-
-    // создаём строку, в которою запишем сообщения ответа
-    QString strMessage = "";
-
-    if (dwRetVal != 0)
+    WSADATA wsadata;
+    // Инициализация WinSock заданной версии
+    if (WSAStartup(MAKEWORD(v_major, v_minor), &wsadata))
     {
-        // Структура эхо ответа
-        PICMP_ECHO_REPLY pEchoReply = (PICMP_ECHO_REPLY)ReplyBuffer;
-        struct in_addr ReplyAddr;
-        ReplyAddr.S_un.S_addr = pEchoReply->Address;
-
-        strMessage += "Sent icmp message to 1\n"/* + ui->lineEdit->text() + "\n"*/;
-        if (dwRetVal > 1) {
-            strMessage += "Received " + QString::number(dwRetVal) + " icmp message responses \n";
-            strMessage += "Information from the first response: ";
-        }
-        else {
-            strMessage += "Received " + QString::number(dwRetVal) + " icmp message response \n";
-            strMessage += "Information from the first response: ";
-        }
-            strMessage += "Received from ";
-            strMessage += inet_ntoa( ReplyAddr );
-            strMessage += "\n";
-            strMessage += "Status = " + pEchoReply->Status;
-            strMessage += "Roundtrip time = " + QString::number(pEchoReply->RoundTripTime) + " milliseconds \n";
+        return WSAGetLastError();
     }
-    else
+    // Проверка версии WinSock
+    if(LOBYTE(wsadata.wVersion) != v_minor ||
+        HIBYTE(wsadata.wVersion) != v_major)
     {
-        strMessage += "Call to IcmpSendEcho failed.\n";
-        strMessage += "IcmpSendEcho returned error: ";
-        strMessage += QString::number(GetLastError());
+        rs_exit();
+        return WSAGetLastError();
     }
-    __print << dwRetVal << strMessage;
-    //ui->textEdit->setText(strMessage); // Отображаем информацию о полученных данных
-    free(ReplyBuffer); // Освобождаем память
+    return 0;
+}
+
+ushort ICMPGenerator::getCRC (ushort* buffer, int length)
+{
+    ulong crc = 0;
+    // Вычисление CRC
+    while (length > 1)
+    {
+        crc += *buffer++;
+        length -= sizeof (ushort);
+    }
+    if (length) crc += *(uchar*)buffer;
+    // Закончить вычисления
+    crc = (crc >> 16) + (crc & 0xffff);
+    crc += (crc >> 16);
+    // Возвращаем инвертированное значение
+    return (ushort)(~crc);
+}
+
+int ICMPGenerator::sendIP(SOCKET s, struct ip_header iph,
+            uchar* data, int data_length,
+            ushort dst_port_raw)
+{
+    int result;
+    char* buffer;
+    sockaddr_in target;
+    unsigned char header_length;
+    unsigned int packet_length;
+    memset (&target, 0, sizeof (target));
+    target.sin_family = AF_INET;
+    target.sin_addr.s_addr = iph.dst_addr;
+    target.sin_port = dst_port_raw;
+
+    // Вычисление длины и заголовка пакета
+    header_length = sizeof (struct ip_header);
+    packet_length = header_length + data_length;
+
+    // Установка CRC.
+    iph.crc = 0;
+
+    // Заполнение некоторых полей заголовка IP
+    iph.ver_ihl = RS_IP_VERSION;
+
+    // Если длина пакета не задана, то длина пакета
+    // приравнивается к длине заголовка
+    if (!(iph.ver_ihl & 0x0F))
+        iph.ver_ihl |= 0x0F & (header_length / 4);
+    buffer =(char *)calloc(packet_length, sizeof (char));
+
+    // Копирование заголовка пакета в буфер ( CRC равно 0).
+    memcpy(buffer, &iph, sizeof (struct ip_header));
+
+    // Копирование данных в буфер
+    if (data)
+        memcpy (buffer + header_length, data, data_length);
+
+    // Вычисление CRC.
+    iph.crc = getCRC((unsigned short *) buffer, packet_length);
+
+    // Копирование заголовка пакета в буфер (CRC посчитана).
+    memcpy (buffer, &iph, sizeof (struct ip_header));
+
+    // Отправка IP пакета в сеть.
+    result = sendto ( s, buffer, packet_length, 0,
+                (struct sockaddr *)&target,
+                sizeof (target));
+    free (buffer);
+    return result;
+}
+
+int ICMPGenerator::sendICMP(SOCKET s, struct ip_header iph,
+              struct icmp_header icmph,
+              uchar* data, int data_length)
+{
+    char* buffer;
+    int result;
+    uchar header_length;
+    uint packet_length;
+
+    // Вычисление длин пакета и заголовка.
+    header_length = sizeof (struct icmp_header);
+    packet_length = header_length + data_length;
+    icmph.crc = 0;
+    buffer = new char[packet_length];
+
+    // Копирование заголовка пакета в буфер ( CRC равно 0).
+    memcpy(buffer, &icmph, sizeof(struct icmp_header));
+
+    // Копирование данных в буфер
+    if (data)
+        memcpy (buffer + header_length, data, data_length);
+
+    // Вычисление CRC.
+    icmph.crc = getCRC ((unsigned short *) buffer,
+                  packet_length);
+
+    // Копирование заголовка пакета в буфер (CRC посчитана).
+    memcpy (buffer, &icmph, sizeof (struct icmp_header));
+
+    // Отправка IP пакета с вложенным ICMP пакетом.
+    result = sendIP (s, iph, buffer, packet_length, 0);
+
+    delete buffer;
+    buffer = nullptr;
+    return result;
+}
+
+int ICMPGenerator::sendDatagram(QByteArray data)
+{
+    int result;
+    ip_header IPH;
+    icmp_header ICMPH;
+    // TODO забить хэдэры
+
+    // Отправка ICMP пакета с вложенным пакетом данных.
+    result = sendICMP(socket, IPH, ICMPH, data.data(), data.length());
+
+    delete buffer;
+    buffer = nullptr;
+    return result;
 }
