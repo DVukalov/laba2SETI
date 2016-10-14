@@ -14,6 +14,7 @@
 #include <QTextStream>
 #include <QIODevice>
 #include <QString>
+#include <QTime>
 #include <QByteArray>
 class Sniffer : public QObject
 {
@@ -30,7 +31,6 @@ private slots:
     bool promiscuousModeON();
     bool startSniffer();
     void parseIP();
-    void printMSG();
     void parseICMP();
     void parseTCP();
     void parseUDP();

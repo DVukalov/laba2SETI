@@ -190,12 +190,12 @@ bool Sniffer::startSniffer()
                     if (ip->proto == IPPROTO_ICMP)
                     {
                         __print << "ICMP";
+                        parseICMP();
                     }
                 }
-
-
-
+                delete ip;
             }
+
         }
 
     }
@@ -214,7 +214,10 @@ void Sniffer::parseIP()
     memset(&dest, 0, sizeof(dest));
     dest.sin_addr.s_addr = ip->dst_addr;
     QByteArray data;
-    data = "\n          IP Header \n |-IP Version          : " + QByteArray::number(0xF & ip->ver_ihl)
+    data ="\n"
+            + QByteArray(QTime::currentTime().toString("hh:mm:ss")
+                         .toStdString().c_str())
+            + " IP Header \n |-IP Version          : " + QByteArray::number(0xF & ip->ver_ihl)
             + "\n |-Type Of Service     : " + QByteArray::number(ip->tos)
             + "\n |-IP Header Length    : " + QByteArray::number(0xF0 & ip->ver_ihl)
             + "\n |-IP Total Length     : " + QByteArray::number(ip->tlen)
@@ -224,31 +227,38 @@ void Sniffer::parseIP()
             + "\n |-Checksum            : " + QByteArray::number(ip->crc, 16)
             + "\n |-Source IP           : " + inet_ntoa(source.sin_addr)
             + "\n |-Destination IP      : " + inet_ntoa(dest.sin_addr);
-
     file.write(data.data());
-
     delete ip;
-    ip = nullptr;
-}
-
-void Sniffer::printMSG()
-{
-//    ip_header * ip = (struct ip_header * )buffer;
-//    iplen = (0xF0 & ip->ver_ihl) * 4;
-//    udp_header *udp = (udp_header *)(buffer + iplen);
-
+//    ip = nullptr;
 }
 
 void Sniffer::parseICMP()
 {
     parseIP();
-    icmp_header * icmp = (icmp_header *)buffer;
+    unsigned short iplen;
+    ip_header * ip = (struct ip_header * )buffer;
+    iplen = (0xF0 & ip->ver_ihl) * 4;
+    icmp_header * icmp = (icmp_header *)(buffer + iplen);
 
+    QByteArray data;
+    data = "\n\n          ICMP Header \n    |-Type        : " + QByteArray::number(icmp->type)
+            + "\n    |-Code    : " + QByteArray::number(icmp->code)
+            + "\n    |-Checksum      : " + QByteArray::number(icmp->crc,16)
+            + "\n";
+    file.write(data.data());
 
+    QByteArray MSG = QByteArray(buffer + iplen + sizeof(icmp));
+    if (!MSG.isEmpty())
+    {
+        MSG = MSG + "\n";
 
-
-
-
+        file.write(MSG.data());
+        __print << MSG.data();
+    }
+    else
+        file.write("        EMPTY \n");
+    delete ip;
+    delete icmp;
 }
 
 void Sniffer::parseTCP()
@@ -258,6 +268,7 @@ void Sniffer::parseTCP()
     ip_header * ip = (struct ip_header * )buffer;
     iplen = (0xF0 & ip->ver_ihl) * 4;
     tcp_header * tcp = (tcp_header *)(buffer + iplen);
+
     QByteArray data;
     data = "\n\n          TCP Header \n    |-Source Port        : " + QByteArray::number(tcp->src_port)
             + "\n    |-Destination Port    : " + QByteArray::number(tcp->dst_port)
@@ -267,31 +278,62 @@ void Sniffer::parseTCP()
             + "\n    |-Checksum            : " + QByteArray::number(tcp->crc,16)
             + "\n";
     file.write(data.data());
+
+    QByteArray MSG = QByteArray(buffer + iplen + sizeof(tcp));
+    if (!MSG.isEmpty())
+    {
+        MSG = MSG + "\n";
+
+        file.write(MSG.data());
+        __print << MSG.data();
+    }
+    else
+        file.write("        EMPTY \n");
+
+
+
+
     delete ip;
-    ip = nullptr;
+//    ip = nullptr;
     delete tcp;
-    tcp = nullptr;
+//    tcp = nullptr;
 }
 
 void Sniffer::parseUDP()
 {
     parseIP();
-    unsigned short iplen;
+    __print;
+    unsigned short iplen, tlen;
     ip_header * ip = (struct ip_header * )buffer;
     iplen = (0xF0 & ip->ver_ihl) * 4;
+    tlen = ip->tlen;
     udp_header *udp = (udp_header *)(buffer + iplen);
+    __print;
+
     QByteArray data;
     data = "\n\n          UDP Header \n    |-Source Port         : " + QByteArray::number(udp->src_port)
             + "\n    |-Destination Port    : " + QByteArray::number(udp->dst_port)
             + "\n    |-UDP Length          : " + QByteArray::number(udp->length)
-            + "\n    |-UDP Checksum        : " + QByteArray::number(udp->crc, 16)
+            + "\n    |-UDP Checksum        : " + QByteArray::number(udp->crc,16)
             + "\n";
+    __print;
     file.write(data.data());
+
+    __print;
+    if (udp->length != 0)
+    {
+        QByteArray  MSG = QByteArray((buffer + iplen + tlen));
+        __print << MSG.data();
+        MSG = MSG + "\n";
+        file.write(MSG.data());
+    }
+    else
+        file.write("            EMPTY \n");
 //    delete ip;
-//    __print;
+    __print;
 //    ip =nullptr;
-//    __print;
+    __print;
 //    delete udp;
-//    __print;
+    __print;
 //    udp = nullptr;
 }
