@@ -7,31 +7,44 @@ namespace
 
     struct ip_header
     {
-        unsigned char	ver_ihl;	// Длина заголовка (4 бита)
-                    // (измеряется в словах по 32 бита) +
-                    // + Номер версии протокола (4 бита)
-        unsigned char	tos;		// Тип сервиса
-        unsigned short	tlen;		// Общая длина пакета
-        unsigned short	id;		// Идентификатор пакета
-        unsigned short	flags_fo;	// Управляющие флаги (3 бита)
-                        // + Смещение фрагмента (13 бит)
-        unsigned char	ttl;		// Время жизни пакета
-        unsigned char	proto;		// Протокол верхнего уровня
-        unsigned short	crc;		// CRC заголовка
-        unsigned int	src_addr;	// IP-адрес отправителя
-        unsigned int	dst_addr;	// IP-адрес получателя
+        uchar ver_ihl;      // Длина заголовка (4 бита)
+                            // (измеряется в словах по 32 бита) +
+                            // + Номер версии протокола (4 бита)
+        uchar tos;          // Тип сервиса
+        ushort tlen;        // Общая длина пакета
+        ushort id;          // Идентификатор пакета
+        ushort flags_fo;    // Управляющие флаги (3 бита)
+                            // + Смещение фрагмента (13 бит)
+        uchar ttl;          // Время жизни пакета
+        uchar proto;        // Протокол верхнего уровня
+        ushort crc;         // CRC заголовка
+        uint src_addr;      // IP-адрес отправителя
+        uint dst_addr;      // IP-адрес получателя
     };
 
     struct icmp_header
     {
-    unsigned char   type;			// тип ICMP- пакета
-    unsigned char   code;			// код ICMP- пакета
-    unsigned short  crc ;			// контрольная сумма
-    union {
-        struct { unsigned char	uc1, uc2, uc3, uc4; } s_uc;
-        struct { unsigned short	us1, us2; } s_us;
-        unsigned long s_ul;
-        } s_icmp;				// зависит от типа
+        uchar type;   // тип ICMP- пакета
+        uchar code;   // код ICMP- пакета
+        ushort crc;   // контрольная сумма
+        union
+        {
+            struct
+            {
+                uchar uc1;
+                uchar uc2;
+                uchar uc3;
+                uchar uc4;
+            } s_uc;
+            struct
+            {
+                ushort us1;
+                ushort us2;
+            } s_us;
+
+            ulong s_ul;
+
+        } s_icmp;   // зависит от типа
     };
 
     struct tcp_header
@@ -177,23 +190,23 @@ bool Sniffer::startSniffer()
                 ip_header *ip = (ip_header *)buffer;
                 if (count >=sizeof(ip_header))
                 {
-                    if (ip->proto == IPPROTO_TCP)
-                    {
-                        __print << "TCP";
-                        parseTCP();
-                    }
-                    if (ip->proto == IPPROTO_UDP)
-                    {
-                        __print << "UDP";
-                        parseUDP();
-                    }
+//                    if (ip->proto == IPPROTO_TCP)
+//                    {
+//                        __print << "TCP";
+//                        parseTCP();
+//                    }
+//                    if (ip->proto == IPPROTO_UDP)
+//                    {
+//                        __print << "UDP";
+//                        parseUDP();
+//                    }
                     if (ip->proto == IPPROTO_ICMP)
                     {
                         __print << "ICMP";
                         parseICMP();
                     }
                 }
-                delete ip;
+//                delete ip;
             }
 
         }
@@ -228,7 +241,7 @@ void Sniffer::parseIP()
             + "\n |-Source IP           : " + inet_ntoa(source.sin_addr)
             + "\n |-Destination IP      : " + inet_ntoa(dest.sin_addr);
     file.write(data.data());
-    delete ip;
+//    delete ip;
 //    ip = nullptr;
 }
 
@@ -257,8 +270,8 @@ void Sniffer::parseICMP()
     }
     else
         file.write("        EMPTY \n");
-    delete ip;
-    delete icmp;
+//    delete ip;
+//    delete icmp;
 }
 
 void Sniffer::parseTCP()
@@ -293,22 +306,22 @@ void Sniffer::parseTCP()
 
 
 
-    delete ip;
+//    delete ip;
 //    ip = nullptr;
-    delete tcp;
+//    delete tcp;
 //    tcp = nullptr;
 }
 
 void Sniffer::parseUDP()
 {
     parseIP();
-    __print;
+//    __print;
     unsigned short iplen, tlen;
     ip_header * ip = (struct ip_header * )buffer;
     iplen = (0xF0 & ip->ver_ihl) * 4;
     tlen = ip->tlen;
     udp_header *udp = (udp_header *)(buffer + iplen);
-    __print;
+//    __print;
 
     QByteArray data;
     data = "\n\n          UDP Header \n    |-Source Port         : " + QByteArray::number(udp->src_port)
@@ -316,24 +329,24 @@ void Sniffer::parseUDP()
             + "\n    |-UDP Length          : " + QByteArray::number(udp->length)
             + "\n    |-UDP Checksum        : " + QByteArray::number(udp->crc,16)
             + "\n";
-    __print;
+//    __print;
     file.write(data.data());
 
-    __print;
+//    __print;
     if (udp->length != 0)
     {
         QByteArray  MSG = QByteArray((buffer + iplen + tlen));
-        __print << MSG.data();
+        __print << MSG;
         MSG = MSG + "\n";
         file.write(MSG.data());
     }
     else
         file.write("            EMPTY \n");
 //    delete ip;
-    __print;
+//    __print;
 //    ip =nullptr;
-    __print;
+//    __print;
 //    delete udp;
-    __print;
+//    __print;
 //    udp = nullptr;
 }

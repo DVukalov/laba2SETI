@@ -33,15 +33,15 @@ ICMPGenerator::ICMPGenerator(QObject* parent)
     // Данные
     mICMPH.s_icmp.s_ul = 0xE0A55;
 
-    __print << init(2, 2);
-    socket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_RAW, NULL, 0,
-                       WSA_FLAG_OVERLAPPED);
+    init(2, 2);
+    mSocket = socket(AF_INET, SOCK_RAW,IPPROTO_RAW);
+    __print << mSocket;
 }
 
 ICMPGenerator::~ICMPGenerator()
 {
-    __print;
-    closesocket(socket);
+//    __print;
+    closesocket(mSocket);
     WSACleanup();
 }
 
@@ -137,7 +137,7 @@ int ICMPGenerator::sendDatagram(QByteArray message)
     memcpy (buffer, &mIPH, sizeof (struct ip_header));
 
     // Отправка IP пакета в сеть.
-    result = sendto (socket, buffer, PACKlen, 0,
+    result = sendto (mSocket, buffer, PACKlen, 0,
                 (struct sockaddr *)&target, sizeof(target));
 
     return result;

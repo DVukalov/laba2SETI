@@ -71,7 +71,7 @@ private slots:
     ushort getCRC (ushort* buffer, int length);
 
 private:
-    SOCKET socket;
+    SOCKET mSocket;
     struct ip_header mIPH;
     struct icmp_header mICMPH;
 };
