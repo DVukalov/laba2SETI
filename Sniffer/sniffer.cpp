@@ -206,7 +206,7 @@ bool Sniffer::startSniffer()
                             && mUDP)
                     {
 //                        __print << "UDP";
-                        parseUDP();
+//                        parseUDP();
                     }
                     else if ((ip->proto == IPPROTO_ICMP)
                             && mICMP)

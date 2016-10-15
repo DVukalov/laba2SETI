@@ -66,7 +66,7 @@ Interface::Interface(QWidget *parent) :
             Qt::DirectConnection);
 
     QPalette pal;
-    pal.setBrush(this->backgroundRole(),QBrush(QPixmap("2.jpg")));
+    pal.setBrush(this->backgroundRole(),QBrush(QPixmap("7.jpg")));
     this->setPalette(pal);
     this->setAutoFillBackground(true);
 

@@ -10,14 +10,14 @@ ICMPGenerator::ICMPGenerator(QObject* parent)
     : QObject(parent)
 {
     // Заполнение полей заголовка IP
-    mIPH.ver_ihl = 0x40;
+    mIPH.ver_ihl = 0x20;
     mIPH.tos = 0xFC; // все требования без ECN
     mIPH.id = packetID++;
     mIPH.flags_fo = 0x0;
     mIPH.ttl = 0x40; // 64 (default)
-    mIPH.proto = 0x02; // ICMP
+    mIPH.proto = 0x01; // ICMP
     mIPH.src_addr = 0xC0A80001; // 192.168.0.1
-    mIPH.dst_addr = 0xC0A80002; // 192.168.0.2
+    mIPH.dst_addr = 0x0200A8C0; // 192.168.0.2
 
     // Заполнение полей заголовка ICMP
     mICMPH.type = 0x8; // ICMP_ECHO
@@ -34,20 +34,20 @@ ICMPGenerator::ICMPGenerator(QObject* parent)
     mICMPH.s_icmp.s_ul = 0xE0A55;
 
     init(2, 2);
-    mSocket = WSASocket (AF_INET, SOCK_RAW, IPPROTO_RAW, NULL, 0,
+    mSocket = WSASocket (AF_INET, SOCK_RAW, IPPROTO_ICMP, NULL, 0,
                     WSA_FLAG_OVERLAPPED);
     int tos = 0;
     int tos_len = sizeof (tos);
-    int per=setsockopt(mSocket, IPPROTO_IP, 3, (char *)&tos,
-                 tos_len);
+//    int per=setsockopt(mSocket, IPPROTO_IP, 3, (char *)&tos,
+//                 tos_len);
 
 
 //    mSocket = socket(AF_INET, SOCK_RAW,IPPROTO_RAW);
 //    mSocket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_ICMP, NULL, 0,
 //                        WSA_FLAG_OVERLAPPED);
     uint use_own_header = 1;
-    setsockopt (mSocket, IPPROTO_IP, 2, (char*)&use_own_header,
-                    sizeof(use_own_header));
+//    setsockopt (mSocket, IPPROTO_IP, 2, (char*)&use_own_header,
+//                    sizeof(use_own_header));
 
     __print << mSocket;
 }
@@ -108,22 +108,22 @@ int ICMPGenerator::sendDatagram(QByteArray message)
     memset(&target, 0, sizeof (target));
     target.sin_family = AF_INET;
     target.sin_addr.s_addr = mIPH.dst_addr;
-    target.sin_port = 0;
+    target.sin_port = 10;
     mIPH.tlen = PACKlen;
-    buffer = new char[ICMPlen + DATAlen];
+    buffer = new char[max_buf_len];
 
     // Копирование заголовка пакета в буфер ( CRC равно 0).
-    memcpy(buffer, &mICMPH, ICMPlen);
-
+    memcpy(buffer + IPlen, &mICMPH, ICMPlen);
+    __print << buffer;
     // Копирование данных в буфер
-    memcpy (buffer + ICMPlen, message.data(), DATAlen);
-
+    memcpy (buffer + IPlen + ICMPlen, message.data(), DATAlen);
+    __print << buffer;
     // Вычисление CRC.
     mICMPH.crc = getCRC((ushort *)buffer, ICMPlen + DATAlen);
 
     // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy(buffer, &mICMPH, ICMPlen);
-
+    memcpy(buffer + IPlen, &mICMPH, ICMPlen);
+    __print << buffer;
     // Установка CRC.
     mIPH.crc = 0;
 
@@ -132,27 +132,22 @@ int ICMPGenerator::sendDatagram(QByteArray message)
     if (!(mIPH.ver_ihl & 0x0F))
         mIPH.ver_ihl |= 0x0F & (IPlen / 4);
 
-    delete buffer;
-    buffer = new char[PACKlen];
-
     // Копирование заголовка пакета в буфер ( CRC равно 0).
     memcpy(buffer, &mIPH, IPlen);
-
-    // Копирование данных в буфер
-    memcpy (buffer + IPlen, message.data(), ICMPlen + DATAlen);
-
+    __print << buffer;
     // Вычисление CRC.
     mIPH.crc = getCRC((ushort *)buffer, PACKlen);
 
     // Копирование заголовка пакета в буфер (CRC посчитана).
     memcpy (buffer, &mIPH, IPlen);
-
-    // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy (buffer, &mIPH, sizeof (struct ip_header));
-
+    __print << buffer;
     // Отправка IP пакета в сеть.
+    QByteArray data = QByteArray(buffer);
+    __print <<data.data();
     result = sendto (mSocket, buffer, PACKlen, 0,
                 (struct sockaddr *)&target, sizeof(target));
+    __print << result;
+    __print << WSAGetLastError();
 
     return result;
 }
