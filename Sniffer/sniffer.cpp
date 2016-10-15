@@ -81,10 +81,24 @@ Sniffer::Sniffer(QObject* parent)
     adrPC = new sockaddr_in;
     informHost = new HOSTENT;
     buffer = new char[max_buf_len];
+
+/*    fileTCP.setFileName("logTCP.txt");
+    fileTCP.open(QIODevice::WriteOnly);
+    fileTCP.flush();
+
+    fileUDP.setFileName("logUDP.txt");
+    fileUDP.open(QIODevice::WriteOnly);
+    fileUDP.flush();
+
+    fileICMP.setFileName("logICMP.txt");
+    fileICMP.open(QIODevice::WriteOnly);
+    fileICMP.flush()*/;
+
+
     file.setFileName("log.txt");
     file.open(QIODevice::WriteOnly);
     file.flush();
-    out.setDevice(&file);
+//    out.setDevice(&file);
 //    startSniffer();
     __print;
 
@@ -92,9 +106,13 @@ Sniffer::Sniffer(QObject* parent)
 
 Sniffer::~Sniffer()
 {
+    __print;
     delete buffer;
     delete adrPC;
     delete informHost;
+//    fileTCP.close();
+//    fileUDP.close();
+//    fileICMP.close();
     file.close();
 }
 
@@ -210,13 +228,13 @@ bool Sniffer::startSniffer()
             }
 
         }
-
     }
     return true;
 }
 
 void Sniffer::parseIP()
 {
+
     uint iplen;
     ip_header *ip = (ip_header *)buffer;
     struct sockaddr_in source, dest;
@@ -247,6 +265,7 @@ void Sniffer::parseIP()
 
 void Sniffer::parseICMP()
 {
+
     parseIP();
     unsigned short iplen;
     ip_header * ip = (struct ip_header * )buffer;
@@ -276,6 +295,7 @@ void Sniffer::parseICMP()
 
 void Sniffer::parseTCP()
 {
+
     parseIP();
     unsigned short iplen;
     ip_header * ip = (struct ip_header * )buffer;
@@ -314,6 +334,7 @@ void Sniffer::parseTCP()
 
 void Sniffer::parseUDP()
 {
+
     parseIP();
 //    __print;
     unsigned short iplen, tlen;

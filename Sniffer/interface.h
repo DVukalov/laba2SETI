@@ -1,11 +1,13 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
+#include "sniffer.h"
 #include <QWidget>
 #include <QLayout>
 #include <QPushButton>
-#include "sniffer.h"
 #include <QScrollArea>
+#include <QCheckBox>
+#include <QThread>
 namespace Ui {
 class Interface;
 }
@@ -21,10 +23,14 @@ public slots:
     void startSniffer();
 private:
     Ui::Interface *ui;
+    Sniffer * mSniffer;
+public:
     QPushButton *mStartBut;
     QPushButton *mStopBut;
     QScrollArea *mArea;
-    Sniffer * mSniffer;
+    QCheckBox *mFilterUDP;
+    QCheckBox *mFilterTCP;
+    QCheckBox *mFilterICMP;
 };
 
 #endif // INTERFACE_H

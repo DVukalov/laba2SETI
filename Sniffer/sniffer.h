@@ -1,8 +1,7 @@
 #ifndef SNIFFER
 #define SNIFFER
 
-#pragma once
-
+//#pragma once
 #include <QObject>
 #include "conio.h"
 #include <QDebug>
@@ -31,12 +30,10 @@ private slots:
     bool determIP_PC();
     bool bindSocket();
     bool promiscuousModeON();
-
     void parseIP();
     void parseICMP();
     void parseTCP();
     void parseUDP();
-
 
 private:
     char name[128];
@@ -44,8 +41,12 @@ private:
     SOCKADDR_IN * adrPC;
     HOSTENT * informHost;
     char * buffer;
+    QFile fileTCP;
+    QFile fileUDP;
+    QFile fileICMP;
     QFile file;
-    QTextStream out;
+
+
 };
 
 #endif // SNIFFER
