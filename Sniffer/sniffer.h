@@ -23,13 +23,15 @@ class Sniffer : public QObject
 public:
     explicit Sniffer(QObject* parent = 0);
     ~Sniffer();
+public slots:
+        bool startSniffer();
 private slots:
     bool initialization();
     bool createSocket();
     bool determIP_PC();
     bool bindSocket();
     bool promiscuousModeON();
-    bool startSniffer();
+
     void parseIP();
     void parseICMP();
     void parseTCP();

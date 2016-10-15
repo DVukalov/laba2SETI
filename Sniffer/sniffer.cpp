@@ -85,7 +85,7 @@ Sniffer::Sniffer(QObject* parent)
     file.open(QIODevice::WriteOnly);
     file.flush();
     out.setDevice(&file);
-    startSniffer();
+//    startSniffer();
     __print;
 
 }
@@ -190,16 +190,16 @@ bool Sniffer::startSniffer()
                 ip_header *ip = (ip_header *)buffer;
                 if (count >=sizeof(ip_header))
                 {
-//                    if (ip->proto == IPPROTO_TCP)
-//                    {
-//                        __print << "TCP";
-//                        parseTCP();
-//                    }
-//                    if (ip->proto == IPPROTO_UDP)
-//                    {
-//                        __print << "UDP";
-//                        parseUDP();
-//                    }
+                    if (ip->proto == IPPROTO_TCP)
+                    {
+                        __print << "TCP";
+                        parseTCP();
+                    }
+                    if (ip->proto == IPPROTO_UDP)
+                    {
+                        __print << "UDP";
+                        parseUDP();
+                    }
                     if (ip->proto == IPPROTO_ICMP)
                     {
                         __print << "ICMP";

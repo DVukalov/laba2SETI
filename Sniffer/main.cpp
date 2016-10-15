@@ -7,6 +7,6 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     Interface w;
     w.show();
-    Sniffer sw;
+//    Sniffer sw;
     return a.exec();
 }
