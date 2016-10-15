@@ -8,7 +8,7 @@
 #include <QScrollArea>
 #include <QCheckBox>
 #include <QThread>
-
+#include <QPalette>
 namespace Ui {
 class Interface;
 }
@@ -34,5 +34,6 @@ public:
     QCheckBox *mFilterICMP;
     QThread mThread;
 };
+
 
 #endif // INTERFACE_H

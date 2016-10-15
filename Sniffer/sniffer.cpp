@@ -90,18 +90,16 @@ Sniffer::Sniffer(QObject* parent)
     mICMP = true;
 
     fileTCP.setFileName("logTCP.txt");
-    __print << fileTCP.open(QIODevice::WriteOnly);
+    fileTCP.open(QIODevice::WriteOnly);
     fileTCP.flush();
 
     fileUDP.setFileName("logUDP.txt");
-    __print << fileUDP.open(QIODevice::WriteOnly);
+    fileUDP.open(QIODevice::WriteOnly);
     fileUDP.flush();
 
     fileICMP.setFileName("logICMP.txt");
-    __print <<fileICMP.open(QIODevice::WriteOnly);
+    fileICMP.open(QIODevice::WriteOnly);
     fileICMP.flush();
-    __print;
-
 }
 
 Sniffer::~Sniffer()
@@ -118,7 +116,6 @@ Sniffer::~Sniffer()
 
 bool Sniffer::initialization()
 {
-    __print;
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2,2), &wsaData))
     {
@@ -130,7 +127,6 @@ bool Sniffer::initialization()
 
 bool Sniffer::createSocket()
 {
-    __print;
    sock = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
     if (INVALID_SOCKET == sock)
     {
@@ -143,7 +139,6 @@ bool Sniffer::createSocket()
 
 bool Sniffer::determIP_PC()
 {
-    __print;
     if(gethostname(name, sizeof(name)))
     {
         __print<<"GETHOSTNAME";
@@ -153,18 +148,14 @@ bool Sniffer::determIP_PC()
     }
 
     informHost = gethostbyname(name);
-//    ZeroMemory(&adrPC, sizeof(adrPC));
-//    adrPC = new sockaddr_in;
     adrPC->sin_family = AF_INET;
     adrPC->sin_addr.S_un.S_addr = ((struct in_addr *)
                                    informHost->h_addr_list[0])->S_un.S_addr;
-//    adrPC->sin_port = htons(27015);
     return true;
 }
 
 bool Sniffer::bindSocket()
 {
-    __print;
     if (bind (sock, (SOCKADDR *)adrPC, sizeof(SOCKADDR)))
     {
         __print<<"BIND";
@@ -177,7 +168,6 @@ bool Sniffer::bindSocket()
 
 bool Sniffer::promiscuousModeON()
 {
-    __print;
     unsigned long flag = 1;
     if (ioctlsocket(sock, SIO_RCVALL, &flag))
     {
@@ -191,8 +181,6 @@ bool Sniffer::promiscuousModeON()
 }
 bool Sniffer::startSniffer()
 {
-    __print;
-
     if (!(initialization() && createSocket() && determIP_PC()
           && bindSocket() && promiscuousModeON()))
         return false;
@@ -257,8 +245,8 @@ void Sniffer::parseIP(int fileId)
             + "\n |-TTL                 : " + QByteArray::number(ip->ttl)
             + "\n |-Protocol            : " + QByteArray::number(ip->proto)
             + "\n |-Checksum            : " + QByteArray::number(ip->crc, 16)
-            + "\n |-Source IP           : " + inet_ntoa(source.sin_addr)
-            + "\n |-Destination IP      : " + inet_ntoa(dest.sin_addr);
+            + "\n |-Source IP           : " + QByteArray(inet_ntoa(source.sin_addr))
+            + "\n |-Destination IP      : " + QByteArray(inet_ntoa(dest.sin_addr));
     switch(fileId)
     {
     case eUDP:
@@ -295,7 +283,6 @@ void Sniffer::parseICMP()
         MSG = MSG + "\n";
 
         fileICMP.write(MSG.data());
-        __print << MSG.data();
     }
     else
         fileICMP.write("        EMPTY \n");
@@ -326,7 +313,6 @@ void Sniffer::parseTCP()
         MSG = MSG + "\n";
 
         fileTCP.write(MSG.data());
-        __print << MSG.data();
     }
     else
         fileTCP.write("        EMPTY \n");
@@ -336,13 +322,12 @@ void Sniffer::parseUDP()
 {
 
     parseIP(eUDP);
-//    __print;
+
     unsigned short iplen, tlen;
     ip_header * ip = (struct ip_header * )buffer;
     iplen = (0xF0 & ip->ver_ihl) * 4;
     tlen = ip->tlen;
     udp_header *udp = (udp_header *)(buffer + iplen);
-//    __print;
 
     QByteArray data;
     data = "\n\n          UDP Header \n    |-Source Port         : " + QByteArray::number(udp->src_port)
@@ -350,14 +335,11 @@ void Sniffer::parseUDP()
             + "\n    |-UDP Length          : " + QByteArray::number(udp->length)
             + "\n    |-UDP Checksum        : " + QByteArray::number(udp->crc,16)
             + "\n";
-//    __print;
     fileUDP.write(data.data());
 
-//    __print;
     if (udp->length != 0)
     {
         QByteArray  MSG = QByteArray((buffer + iplen + tlen));
-        __print << MSG;
         MSG = MSG + "\n";
         fileUDP.write(MSG.data());
     }

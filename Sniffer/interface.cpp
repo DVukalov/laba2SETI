@@ -5,9 +5,7 @@ Interface::Interface(QWidget *parent) :
     QWidget(parent),
    ui(new Ui::Interface)
 {
-    __print;
     ui->setupUi(this);
-    __print;
     this->setWindowFlags(Qt::CustomizeWindowHint|
                          Qt::WindowTitleHint);
     this->setWindowTitle("SNIFFER");
@@ -21,21 +19,23 @@ Interface::Interface(QWidget *parent) :
     mStopBut->setFont(QFont("Courier", 12, QFont::Bold));
     mSniffer = new Sniffer;
 
-    __print;
     connect(&mThread, &QThread::started, mSniffer, &Sniffer::startSniffer);
     mSniffer->moveToThread(&mThread);
 
 
     mFilterUDP = new QCheckBox("UDP");
     mFilterUDP->setFont(QFont("Courier", 12, QFont::Bold));
+    mFilterUDP->setStyleSheet("color: rgb(255,255,255)");
     mFilterUDP->setChecked(true);
 
     mFilterTCP = new QCheckBox("TCP");
     mFilterTCP->setFont(QFont("Courier", 12, QFont::Bold));
+    mFilterTCP->setStyleSheet("color: rgb(255,255,255)");
     mFilterTCP->setChecked(true);
 
     mFilterICMP = new QCheckBox("ICMP");
     mFilterICMP->setFont(QFont("Courier", 12, QFont::Bold));
+    mFilterICMP->setStyleSheet("color: rgb(255,255,255)");
     mFilterICMP->setChecked(true);
 
     QVBoxLayout *comboLayout = new QVBoxLayout();
@@ -64,6 +64,11 @@ Interface::Interface(QWidget *parent) :
             Qt::DirectConnection);
     connect(mFilterICMP, SIGNAL(stateChanged(int)), mSniffer, SLOT(checkICMP(int)),
             Qt::DirectConnection);
+
+    QPalette pal;
+    pal.setBrush(this->backgroundRole(),QBrush(QPixmap("2.jpg")));
+    this->setPalette(pal);
+    this->setAutoFillBackground(true);
 
 }
 Interface::~Interface()
