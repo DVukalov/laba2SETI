@@ -34,20 +34,20 @@ ICMPGenerator::ICMPGenerator(QObject* parent)
     mICMPH.s_icmp.s_ul = 0xE0A55;
 
     init(2, 2);
-    mSocket = WSASocket (AF_INET, SOCK_RAW, IPPROTO_ICMP, NULL, 0,
-                    WSA_FLAG_OVERLAPPED);
-    int tos = 0;
-    int tos_len = sizeof (tos);
+//    mSocket = WSASocket (AF_INET, SOCK_RAW, IPPROTO_IP, NULL, 0,
+//                    WSA_FLAG_OVERLAPPED);
+//    int tos = 0;
+//    int tos_len = sizeof (tos);
 //    int per=setsockopt(mSocket, IPPROTO_IP, 3, (char *)&tos,
 //                 tos_len);
 
 
-//    mSocket = socket(AF_INET, SOCK_RAW,IPPROTO_RAW);
+    mSocket = socket(AF_INET, SOCK_RAW,IPPROTO_ICMP);
 //    mSocket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_ICMP, NULL, 0,
 //                        WSA_FLAG_OVERLAPPED);
     uint use_own_header = 1;
-//    setsockopt (mSocket, IPPROTO_IP, 2, (char*)&use_own_header,
-//                    sizeof(use_own_header));
+    setsockopt (mSocket, IPPROTO_RAW, 2, (char*)&use_own_header,
+                    sizeof(use_own_header));
 
     __print << mSocket;
 }
@@ -97,7 +97,7 @@ ushort ICMPGenerator::getCRC (ushort* buffer, int length)
 int ICMPGenerator::sendDatagram(QByteArray message)
 {
     int result;
-    char* buffer;
+    QByteArray buffer , mainBuffer;
     uint DATAlen = message.size();
     uint IPlen = sizeof(struct ip_header);
     uint ICMPlen = sizeof(struct icmp_header);
@@ -110,44 +110,30 @@ int ICMPGenerator::sendDatagram(QByteArray message)
     target.sin_addr.s_addr = mIPH.dst_addr;
     target.sin_port = 10;
     mIPH.tlen = PACKlen;
-    buffer = new char[max_buf_len];
 
-    // Копирование заголовка пакета в буфер ( CRC равно 0).
-    memcpy(buffer + IPlen, &mICMPH, ICMPlen);
-    __print << buffer;
-    // Копирование данных в буфер
-    memcpy (buffer + IPlen + ICMPlen, message.data(), DATAlen);
-    __print << buffer;
-    // Вычисление CRC.
-    mICMPH.crc = getCRC((ushort *)buffer, ICMPlen + DATAlen);
+    mainBuffer.resize(PACKlen);
+    buffer.resize(ICMPlen + DATAlen);
+    buffer.append((char *)&mICMPH);
 
-    // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy(buffer + IPlen, &mICMPH, ICMPlen);
-    __print << buffer;
-    // Установка CRC.
-    mIPH.crc = 0;
+    buffer.append(message);
 
-    // Если длина пакета не задана, то длина пакета
-    // приравнивается к длине заголовка
+    mICMPH.crc = getCRC((ushort *)buffer.data(), buffer.size());
+    mainBuffer.append((char *)&mIPH);
+    mainBuffer.append((char *)&mICMPH);
+    mainBuffer.append(message);
+
     if (!(mIPH.ver_ihl & 0x0F))
         mIPH.ver_ihl |= 0x0F & (IPlen / 4);
 
-    // Копирование заголовка пакета в буфер ( CRC равно 0).
-    memcpy(buffer, &mIPH, IPlen);
-    __print << buffer;
-    // Вычисление CRC.
-    mIPH.crc = getCRC((ushort *)buffer, PACKlen);
+    mIPH.crc = getCRC((ushort *)mainBuffer.data(), mainBuffer.size());
+    mainBuffer.clear();
+    mainBuffer.append((char *)&mIPH);
+    mainBuffer.append((char *)&mICMPH);
+    mainBuffer.append(message);
 
-    // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy (buffer, &mIPH, IPlen);
-    __print << buffer;
-    // Отправка IP пакета в сеть.
-    QByteArray data = QByteArray(buffer);
-    __print <<data.data();
-    result = sendto (mSocket, buffer, PACKlen, 0,
+    result = sendto (mSocket, mainBuffer.data(), PACKlen, 0,
                 (struct sockaddr *)&target, sizeof(target));
-    __print << result;
-    __print << WSAGetLastError();
+    __print <<WSAGetLastError() << mainBuffer << result;
 
-    return result;
+   return result;
 }

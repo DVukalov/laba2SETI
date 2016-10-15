@@ -211,6 +211,7 @@ bool Sniffer::startSniffer()
                     else if ((ip->proto == IPPROTO_ICMP)
                             && mICMP)
                     {
+                        __print << QByteArray(buffer);
                         __print << "ICMP-------------------------------------------";
                         parseICMP();
                     }
