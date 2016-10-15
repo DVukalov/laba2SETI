@@ -8,6 +8,7 @@
 #include <QScrollArea>
 #include <QCheckBox>
 #include <QThread>
+
 namespace Ui {
 class Interface;
 }
@@ -23,7 +24,7 @@ public slots:
     void startSniffer();
 private:
     Ui::Interface *ui;
-    Sniffer * mSniffer;
+    Sniffer *mSniffer;
 public:
     QPushButton *mStartBut;
     QPushButton *mStopBut;
@@ -31,6 +32,7 @@ public:
     QCheckBox *mFilterUDP;
     QCheckBox *mFilterTCP;
     QCheckBox *mFilterICMP;
+    QThread mThread;
 };
 
 #endif // INTERFACE_H

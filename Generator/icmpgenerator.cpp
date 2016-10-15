@@ -10,12 +10,12 @@ ICMPGenerator::ICMPGenerator(QObject* parent)
     : QObject(parent)
 {
     // Заполнение полей заголовка IP
-    mIPH.ver_ihl = 0x40;
+    mIPH.ver_ihl = 0x20;
     mIPH.tos = 0xFC; // все требования без ECN
     mIPH.id = packetID++;
     mIPH.flags_fo = 0x0;
     mIPH.ttl = 0x40; // 64 (default)
-    mIPH.proto = 0x1; // ICMP
+    mIPH.proto = 0x01; // ICMP
     mIPH.src_addr = 0xC0A80001; // 192.168.0.1
     mIPH.dst_addr = 0xC0A80002; // 192.168.0.2
 
@@ -34,7 +34,10 @@ ICMPGenerator::ICMPGenerator(QObject* parent)
     mICMPH.s_icmp.s_ul = 0xE0A55;
 
     init(2, 2);
-    mSocket = socket(AF_INET, SOCK_RAW,IPPROTO_RAW);
+    mSocket = socket(AF_INET, SOCK_RAW,IPPROTO_ICMP);
+//    mSocket = WSASocket(AF_INET, SOCK_RAW, IPPROTO_ICMP, NULL, 0,
+//                        WSA_FLAG_OVERLAPPED);
+
     __print << mSocket;
 }
 
@@ -88,14 +91,14 @@ int ICMPGenerator::sendDatagram(QByteArray message)
     uint IPlen = sizeof(struct ip_header);
     uint ICMPlen = sizeof(struct icmp_header);
     // Вычисление длины и заголовка пакета
-    uint PACKlen = IPlen + ICMPlen + DATAlen;
+    uint PACKlen = /*IPlen +*/ ICMPlen + DATAlen;
     sockaddr_in target;
 
     memset(&target, 0, sizeof (target));
     target.sin_family = AF_INET;
     target.sin_addr.s_addr = mIPH.dst_addr;
     target.sin_port = 0;
-    mIPH.tlen = PACKlen;
+//    mIPH.tlen = PACKlen;
     buffer = new char[ICMPlen + DATAlen];
 
     // Копирование заголовка пакета в буфер ( CRC равно 0).
@@ -115,26 +118,26 @@ int ICMPGenerator::sendDatagram(QByteArray message)
 
     // Если длина пакета не задана, то длина пакета
     // приравнивается к длине заголовка
-    if (!(mIPH.ver_ihl & 0x0F))
-        mIPH.ver_ihl |= 0x0F & (IPlen / 4);
+//    if (!(mIPH.ver_ihl & 0x0F))
+//        mIPH.ver_ihl |= 0x0F & (IPlen / 4);
 
     delete buffer;
     buffer = new char[PACKlen];
 
     // Копирование заголовка пакета в буфер ( CRC равно 0).
-    memcpy(buffer, &mIPH, IPlen);
+//    memcpy(buffer, &mIPH, IPlen);
 
     // Копирование данных в буфер
-    memcpy (buffer + IPlen, message.data(), ICMPlen + DATAlen);
+    memcpy (buffer /*+ IPlen*/, message.data(), ICMPlen + DATAlen);
 
     // Вычисление CRC.
-    mIPH.crc = getCRC((ushort *)buffer, PACKlen);
+//    mIPH.crc = getCRC((ushort *)buffer, PACKlen);
 
     // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy (buffer, &mIPH, IPlen);
+//    memcpy (buffer, &mIPH, IPlen);
 
     // Копирование заголовка пакета в буфер (CRC посчитана).
-    memcpy (buffer, &mIPH, sizeof (struct ip_header));
+//    memcpy (buffer, &mIPH, sizeof (struct ip_header));
 
     // Отправка IP пакета в сеть.
     result = sendto (mSocket, buffer, PACKlen, 0,

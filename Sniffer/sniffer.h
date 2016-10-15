@@ -15,6 +15,7 @@
 #include <QString>
 #include <QTime>
 #include <QByteArray>
+#include <QThread>
 class Sniffer : public QObject
 {
     Q_OBJECT
@@ -23,17 +24,22 @@ public:
     explicit Sniffer(QObject* parent = 0);
     ~Sniffer();
 public slots:
-        bool startSniffer();
+    bool startSniffer();
+
 private slots:
     bool initialization();
     bool createSocket();
     bool determIP_PC();
     bool bindSocket();
     bool promiscuousModeON();
-    void parseIP();
+    void parseIP(int fileId);
     void parseICMP();
     void parseTCP();
     void parseUDP();
+    void stopReceive();
+    void checkUDP(int flag);
+    void checkTCP(int flag);
+    void checkICMP(int flag);
 
 private:
     char name[128];
@@ -45,7 +51,10 @@ private:
     QFile fileUDP;
     QFile fileICMP;
     QFile file;
-
+    bool receive;
+    bool mUDP;
+    bool mTCP;
+    bool mICMP;
 
 };
 

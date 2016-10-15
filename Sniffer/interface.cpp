@@ -3,27 +3,39 @@
 
 Interface::Interface(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::Interface)
+   ui(new Ui::Interface)
 {
+    __print;
     ui->setupUi(this);
+    __print;
     this->setWindowFlags(Qt::CustomizeWindowHint|
                          Qt::WindowTitleHint);
+    this->setWindowTitle("SNIFFER");
     this->setFixedSize(300, 200);
-    mStartBut = new QPushButton ("Start", this);
-    mStopBut = new QPushButton("Stop", this);
-    mSniffer = new Sniffer(this);
 
-//    QThread thread;
-//    mSniffer->moveToThread(&thread);
-//    thread.start();
+
+    mStartBut = new QPushButton ("Start", this);
+    mStartBut->setFont(QFont("Courier", 12, QFont::Bold));
+
+    mStopBut = new QPushButton("Stop", this);
+    mStopBut->setFont(QFont("Courier", 12, QFont::Bold));
+    mSniffer = new Sniffer;
+
+    __print;
+    connect(&mThread, &QThread::started, mSniffer, &Sniffer::startSniffer);
+    mSniffer->moveToThread(&mThread);
+
 
     mFilterUDP = new QCheckBox("UDP");
+    mFilterUDP->setFont(QFont("Courier", 12, QFont::Bold));
     mFilterUDP->setChecked(true);
 
     mFilterTCP = new QCheckBox("TCP");
+    mFilterTCP->setFont(QFont("Courier", 12, QFont::Bold));
     mFilterTCP->setChecked(true);
 
     mFilterICMP = new QCheckBox("ICMP");
+    mFilterICMP->setFont(QFont("Courier", 12, QFont::Bold));
     mFilterICMP->setChecked(true);
 
     QVBoxLayout *comboLayout = new QVBoxLayout();
@@ -42,13 +54,23 @@ Interface::Interface(QWidget *parent) :
     this->setLayout(mainLayout);
 
     connect(mStopBut, SIGNAL(clicked()), this, SLOT(close()));
+    connect(mStopBut, SIGNAL(clicked()), mSniffer, SLOT(stopReceive()),
+            Qt::DirectConnection);
     connect(mStartBut, SIGNAL(clicked()), this, SLOT(startSniffer()));
-    ;
+
+    connect(mFilterUDP, SIGNAL(stateChanged(int)), mSniffer, SLOT(checkUDP(int)),
+            Qt::DirectConnection);
+    connect(mFilterTCP, SIGNAL(stateChanged(int)), mSniffer, SLOT(checkTCP(int)),
+            Qt::DirectConnection);
+    connect(mFilterICMP, SIGNAL(stateChanged(int)), mSniffer, SLOT(checkICMP(int)),
+            Qt::DirectConnection);
 
 }
 Interface::~Interface()
 {
     __print;
+    if (mThread.isRunning())
+        mThread.exit();
     delete mStartBut;
     delete mStopBut;
     delete mFilterTCP;
@@ -60,6 +82,5 @@ Interface::~Interface()
 void Interface::startSniffer()
 {
     mStartBut->setDisabled(TRUE);
-    mSniffer->startSniffer();
-
+    mThread.start();
 }
