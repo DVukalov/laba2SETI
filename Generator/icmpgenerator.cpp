@@ -70,7 +70,7 @@ int ICMPGenerator::init (int v_major, int v_minor)
     // Проверка версии WinSock
     if(LOBYTE(wsadata.wVersion) != v_minor ||
         HIBYTE(wsadata.wVersion) != v_major)
-    {        
+    {
         WSACleanup();
         return WSAGetLastError();
     }
