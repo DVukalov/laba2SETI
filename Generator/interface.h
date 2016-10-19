@@ -2,10 +2,13 @@
 #define INTERFACE_H
 
 #include <QWidget>
+#include <QLabel>
 #include <QLayout>
 #include <QTextEdit>
+#include <QLineEdit>
 #include <QByteArray>
 #include <QPushButton>
+#include <QHostAddress>
 
 #include "icmpgenerator.h"
 
@@ -30,6 +33,14 @@ private:
     QPushButton* mSendBut;
     QTextEdit* mMessageEdit;
     ICMPGenerator* mGenerator;
+    QLineEdit* srcHostLine;
+    QLabel* srcHostL;
+    QLineEdit* dstHostLine;
+    QLabel* dstHostL;
+    QLineEdit* ICMPtype;
+    QLabel* ICMPtypeL;
+    QLineEdit* ICMPcode;
+    QLabel* ICMPcodeL;
 };
 
 #endif // INTERFACE_H

@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui network
 
 
 DEFINES += __print="\"qDebug()<< __FILE__ << __LINE__ <<  Q_FUNC_INFO\""

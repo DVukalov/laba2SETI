@@ -14,9 +14,11 @@ namespace
 
     struct ip_header
     {
-        uchar ver_ihl;      // Длина заголовка (4 бита)
+        //uchar ver_ihl;      // Длина заголовка (4 бита)
                             // (измеряется в словах по 32 бита) +
                             // + Номер версии протокола (4 бита)
+        uchar hdrlen:4,
+              version:4;
         uchar tos;          // Тип сервиса
         ushort tlen;        // Общая длина пакета
         ushort id;          // Идентификатор пакета
@@ -108,10 +110,11 @@ Sniffer::~Sniffer()
     delete buffer;
     delete adrPC;
     delete informHost;
+    closesocket(sock);
     fileTCP.close();
     fileUDP.close();
     fileICMP.close();
-    file.close();
+    WSACleanup();
 }
 
 bool Sniffer::initialization()
@@ -199,24 +202,21 @@ bool Sniffer::startSniffer()
                     if ((ip->proto == IPPROTO_TCP)
                             && mTCP)
                     {
-//                        __print << "TCP";
+                        __print << "TCP";
                         parseTCP();
                     }
                     else if ((ip->proto == IPPROTO_UDP)
                             && mUDP)
                     {
-//                        __print << "UDP";
-//                        parseUDP();
+                        __print << "UDP";
+                        parseUDP();
                     }
                     else if ((ip->proto == IPPROTO_ICMP)
                             && mICMP)
                     {
-                        __print << QByteArray(buffer);
                         __print << "ICMP-------------------------------------------";
                         parseICMP();
                     }
-                    else
-                        __print << "GOVNO" << ip->proto;
                 }
             }
         }
@@ -238,9 +238,9 @@ void Sniffer::parseIP(int fileId)
     data ="\n"
             + QByteArray(QTime::currentTime().toString("hh:mm:ss")
                          .toStdString().c_str())
-            + " IP Header \n |-IP Version          : " + QByteArray::number(0xF & ip->ver_ihl)
+            + " IP Header \n |-IP Version          : " + QByteArray::number(ip->version)
             + "\n |-Type Of Service     : " + QByteArray::number(ip->tos)
-            + "\n |-IP Header Length    : " + QByteArray::number(0xF0 & ip->ver_ihl)
+            + "\n |-IP Header Length    : " + QByteArray::number(4 * ip->hdrlen)
             + "\n |-IP Total Length     : " + QByteArray::number(ip->tlen)
             + "\n |-Identification      : " + QByteArray::number(ip->id)
             + "\n |-TTL                 : " + QByteArray::number(ip->ttl)
@@ -252,41 +252,43 @@ void Sniffer::parseIP(int fileId)
     {
     case eUDP:
         fileUDP.write(data.data());
+        fileUDP.flush();
         break;
     case eTCP:
         fileTCP.write(data.data());
+        fileTCP.flush();
         break;
     case eICMP:
         fileICMP.write(data.data());
+        fileICMP.flush();
         break;
     }
 }
 
 void Sniffer::parseICMP()
 {
-
+    __print;
     parseIP(eICMP);
     unsigned short iplen;
     ip_header * ip = (struct ip_header * )buffer;
-    iplen = (0xF0 & ip->ver_ihl) * 4;
-    icmp_header * icmp = (icmp_header *)(buffer + iplen);
+    iplen = (ip->hdrlen) * 4;
+    icmp_header * icmp = (icmp_header *)(buffer + sizeof(ip_header));
 
     QByteArray data;
     data = "\n\n          ICMP Header \n    |-Type        : " + QByteArray::number(icmp->type)
             + "\n    |-Code        : " + QByteArray::number(icmp->code)
-            + "\n    |-Checksum        : " + QByteArray::number(icmp->crc,16)
+            + "\n    |-Checksum    : " + QByteArray::number(icmp->crc,16)
             + "\n";
     fileICMP.write(data.data());
+    fileICMP.flush();
 
-    QByteArray MSG = QByteArray(buffer + iplen + sizeof(icmp_header));
-    if (!MSG.isEmpty())
-    {
+    QByteArray MSG = QByteArray(buffer + sizeof(ip_header) + sizeof(icmp_header));
+
         MSG = MSG + "\n";
 
-        fileICMP.write(MSG.data());
-    }
-    else
-        fileICMP.write("        EMPTY \n");
+        fileICMP.write(MSG);
+        fileICMP.flush();
+
 }
 
 void Sniffer::parseTCP()
@@ -295,7 +297,7 @@ void Sniffer::parseTCP()
     parseIP(eTCP);
     unsigned short iplen;
     ip_header * ip = (struct ip_header * )buffer;
-    iplen = (0xF0 & ip->ver_ihl) * 4;
+    iplen = (ip->hdrlen) * 4;
     tcp_header * tcp = (tcp_header *)(buffer + iplen);
 
     QByteArray data;
@@ -307,16 +309,14 @@ void Sniffer::parseTCP()
             + "\n    |-Checksum            : " + QByteArray::number(tcp->crc,16)
             + "\n";
     fileTCP.write(data.data());
+    fileTCP.flush();
 
     QByteArray MSG = QByteArray(buffer + iplen + sizeof(tcp));
-    if (!MSG.isEmpty())
-    {
         MSG = MSG + "\n";
 
         fileTCP.write(MSG.data());
-    }
-    else
-        fileTCP.write("        EMPTY \n");
+        fileTCP.flush();
+
 }
 
 void Sniffer::parseUDP()
@@ -326,7 +326,7 @@ void Sniffer::parseUDP()
 
     unsigned short iplen, tlen;
     ip_header * ip = (struct ip_header * )buffer;
-    iplen = (0xF0 & ip->ver_ihl) * 4;
+    iplen = (ip->hdrlen) * 4;
     tlen = ip->tlen;
     udp_header *udp = (udp_header *)(buffer + iplen);
 
@@ -337,15 +337,18 @@ void Sniffer::parseUDP()
             + "\n    |-UDP Checksum        : " + QByteArray::number(udp->crc,16)
             + "\n";
     fileUDP.write(data.data());
+    fileUDP.flush();
 
     if (udp->length != 0)
     {
         QByteArray  MSG = QByteArray((buffer + iplen + tlen));
         MSG = MSG + "\n";
         fileUDP.write(MSG.data());
+        fileUDP.flush();
     }
     else
         fileUDP.write("            EMPTY \n");
+        fileUDP.flush();
 }
 
 void Sniffer::stopReceive()

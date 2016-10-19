@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui network
 
 LIBS += -lws2_32
 LIBS += -liphlpapi
