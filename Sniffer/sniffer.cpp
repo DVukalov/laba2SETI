@@ -106,10 +106,8 @@ Sniffer::Sniffer(QObject* parent)
 
 Sniffer::~Sniffer()
 {
-    __print;
     delete buffer;
     delete adrPC;
-    delete informHost;
     closesocket(sock);
     fileTCP.close();
     fileUDP.close();

@@ -73,7 +73,7 @@ Interface::Interface(QWidget *parent) :
 }
 Interface::~Interface()
 {
-    __print;
+
     if (mThread.isRunning())
         mThread.exit();
     delete mStartBut;
